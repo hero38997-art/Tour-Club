@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Tracker - Smart Money & Debt Manager</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 6.4 for Modern Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts - Baloo Da 2 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+Da+2:wght@400..800&display=swap" rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Baloo Da 2', 'sans-serif'],
+                        mono: ['Baloo Da 2', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            500: '#06b6d4',
+                            600: '#0891b2',
+                            700: '#0e7490',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Baloo Da 2', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(51, 65, 85, 0.6);
+        }
+        .glow-emerald { box-shadow: 0 0 20px -5px rgba(16, 185, 129, 0.25); }
+        .glow-amber { box-shadow: 0 0 20px -5px rgba(245, 158, 11, 0.25); }
+        .glow-cyan { box-shadow: 0 0 20px -5px rgba(6, 182, 212, 0.25); }
+    </style>
+</head>
+<body class="h-full bg-slate-950 text-slate-100 antialiased flex flex-col selection:bg-cyan-500 selection:text-slate-950">
+
+    <!-- Top Header Navigation -->
+    <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-teal-400 to-emerald-400 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg shadow-cyan-500/20">
+                    <i class="fa-solid fa-vault"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                        Finance Tracker
+                        <span class="text-[10px] bg-cyan-950 text-cyan-400 font-semibold px-2 py-0.5 rounded-full border border-cyan-800/50 uppercase tracking-widest">Pro</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">Smart Cashflow, Receivables & Liabilities Manager</p>
+                </div>
+            </div>
+
+            <!-- Header Actions -->
+            <div class="flex items-center space-x-3">
+                <!-- Currency Selector -->
+                <div class="flex items-center space-x-1.5 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700/80 text-sm">
+                    <i class="fa-solid fa-coins text-amber-400 text-xs"></i>
+                    <select id="currencySelect" onchange="changeCurrency(this.value)" class="bg-transparent text-xs sm:text-sm text-slate-200 font-semibold focus:outline-none cursor-pointer">
+                        <option value="$" class="bg-slate-900 text-white">USD ($)</option>
+                        <option value="৳" class="bg-slate-900 text-white">BDT (৳)</option>
+                        <option value="€" class="bg-slate-900 text-white">EUR (€)</option>
+                        <option value="£" class="bg-slate-900 text-white">GBP (£)</option>
+                        <option value="₹" class="bg-slate-900 text-white">INR (₹)</option>
+                    </select>
+                </div>
+
+                <!-- Export Data CSV -->
+                <button onclick="exportToCSV()" class="hidden sm:flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-1.5 rounded-xl text-xs font-semibold border border-slate-700 transition duration-150">
+                    <i class="fa-solid fa-file-arrow-down text-cyan-400"></i>
+                    <span>Export CSV</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Notification Toast Area -->
+        <div id="toastContainer" class="fixed top-20 right-4 z-50 space-y-2 pointer-events-none"></div>
+
+        <!-- Dashboard Summary Overview Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <!-- Net Available Balance Card -->
+            <div class="glass-panel rounded-2xl p-4 transition hover:border-slate-700 shadow-xl">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Net Available Balance</p>
+                        <h3 id="totalBalance" class="text-2xl font-bold mt-1 text-white font-mono tracking-tight">$0.00</h3>
+                    </div>
+                    <div class="p-3 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-xl">
+                        <i class="fa-solid fa-scale-balanced text-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-[11px] text-slate-400">
+                    <span id="balanceStatus" class="font-medium text-emerald-400 flex items-center gap-1">
+                        <i class="fa-solid fa-circle-check"></i> Financial status healthy
+                    </span>
+                </div>
+            </div>
+
+            <!-- Total Income & Total Expenses Card -->
+            <div class="glass-panel rounded-2xl p-4 transition hover:border-slate-700 shadow-xl">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Income vs Expenses</p>
+                        <div class="flex items-center space-x-2 mt-1 font-mono">
+                            <span id="totalIncome" class="text-base font-bold text-emerald-400">$0.00</span>
+                            <span class="text-slate-700">|</span>
+                            <span id="totalExpenses" class="text-base font-bold text-rose-400">$0.00</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">
+                        <i class="fa-solid fa-arrows-up-down text-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-3 text-[11px] text-slate-400 flex justify-between">
+                    <span id="incomeCount">0 Income</span>
+                    <span id="expenseCount">0 Expenses</span>
+                </div>
+            </div>
+
+            <!-- Total Receivables Card (I am owed money) -->
+            <div class="glass-panel rounded-2xl p-4 transition hover:border-cyan-500/50 cursor-pointer shadow-xl glow-cyan" onclick="switchTab('tabReceivables')">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Receivables (Claims)</p>
+                        <h3 id="totalReceivable" class="text-2xl font-bold mt-1 text-cyan-400 font-mono tracking-tight">$0.00</h3>
+                    </div>
+                    <div class="p-3 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-xl">
+                        <i class="fa-solid fa-hand-holding-dollar text-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center justify-between text-[11px]">
+                    <span id="receivableCount" class="text-slate-400">0 Pending</span>
+                    <span class="text-cyan-400 font-semibold flex items-center gap-1 hover:underline">Collect <i class="fa-solid fa-arrow-right text-[10px]"></i></span>
+                </div>
+            </div>
+
+            <!-- Total Payables Card (I owe money to others) -->
+            <div class="glass-panel rounded-2xl p-4 transition hover:border-amber-500/50 cursor-pointer shadow-xl glow-amber" onclick="switchTab('tabPayables')">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Payables (Debts)</p>
+                        <h3 id="totalPayable" class="text-2xl font-bold mt-1 text-amber-400 font-mono tracking-tight">$0.00</h3>
+                    </div>
+                    <div class="p-3 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-xl">
+                        <i class="fa-solid fa-handshake-angle text-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center justify-between text-[11px]">
+                    <span id="payableCount" class="text-slate-400">0 Outstanding</span>
+                    <span class="text-amber-400 font-semibold flex items-center gap-1 hover:underline">Settle <i class="fa-solid fa-arrow-right text-[10px]"></i></span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 3 MAIN TABS NAVIGATION -->
+        <div class="bg-slate-900/90 rounded-2xl border border-slate-800 p-1.5 overflow-hidden">
+            <div class="flex overflow-x-auto gap-1">
+                <button id="navTabIncExp" onclick="switchTab('tabIncExp')" 
+                    class="flex-1 min-w-[160px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition-all bg-slate-800 text-white border border-slate-700 shadow-md">
+                    <i class="fa-solid fa-receipt text-emerald-400 text-base"></i>
+                    <span>1. Cashflow (Income & Expense)</span>
+                </button>
+
+                <button id="navTabPayables" onclick="switchTab('tabPayables')" 
+                    class="flex-1 min-w-[160px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition-all text-slate-400 hover:text-white hover:bg-slate-800/50">
+                    <i class="fa-solid fa-handshake-angle text-amber-400 text-base"></i>
+                    <span>2. My Payables (I Owe)</span>
+                    <span id="badgePayablesCount" class="bg-amber-950 text-amber-400 border border-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold">0</span>
+                </button>
+
+                <button id="navTabReceivables" onclick="switchTab('tabReceivables')" 
+                    class="flex-1 min-w-[160px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition-all text-slate-400 hover:text-white hover:bg-slate-800/50">
+                    <i class="fa-solid fa-hand-holding-dollar text-cyan-400 text-base"></i>
+                    <span>3. My Receivables (Owed to Me)</span>
+                    <span id="badgeReceivablesCount" class="bg-cyan-950 text-cyan-400 border border-cyan-800 text-[10px] px-2 py-0.5 rounded-full font-bold">0</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB 1: INCOME & EXPENSE MANAGEMENT -->
+        <div id="tabIncExp" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- Left Column: Entry Form & Category Pie Chart -->
+                <div class="lg:col-span-5 space-y-6">
+                    <!-- Form Container -->
+                    <div class="glass-panel rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
+                        <h2 class="text-sm font-bold text-white flex items-center tracking-wide uppercase">
+                            <i class="fa-solid fa-circle-plus text-emerald-400 mr-2.5 text-base"></i>
+                            New Transaction Entry
+                        </h2>
+
+                        <form id="incExpForm" onsubmit="handleAddIncExp(event)" class="space-y-4">
+                            <!-- Type Selector Switcher -->
+                            <div class="grid grid-cols-2 gap-2 p-1 bg-slate-900 rounded-xl text-xs font-semibold border border-slate-800">
+                                <button type="button" id="formTypeExpenseBtn" onclick="setIncExpFormType('expense')" 
+                                    class="py-2.5 rounded-lg transition-all shadow-sm bg-rose-500/20 text-rose-400 border border-rose-500/30 text-center font-bold">
+                                    🔴 Expense
+                                </button>
+                                <button type="button" id="formTypeIncomeBtn" onclick="setIncExpFormType('income')" 
+                                    class="py-2.5 rounded-lg transition-all text-slate-400 hover:text-white text-center">
+                                    🟢 Income
+                                </button>
+                            </div>
+                            <input type="hidden" id="incExpType" value="expense">
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Description / Title *</label>
+                                <input type="text" id="incExpTitle" required placeholder="e.g., Grocery Shopping, Monthly Salary" 
+                                    class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 focus:outline-none focus:border-cyan-500 text-slate-100 placeholder-slate-500 text-sm">
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Amount *</label>
+                                    <div class="relative">
+                                        <span class="formCurrencySymbol absolute left-3.5 top-2.5 text-slate-400 font-bold text-sm">$</span>
+                                        <input type="number" step="any" min="0.01" id="incExpAmount" required placeholder="0.00" 
+                                            class="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 focus:outline-none focus:border-cyan-500 text-slate-100 font-mono text-sm">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Category *</label>
+                                    <select id="incExpCategory" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 focus:outline-none focus:border-cyan-500 text-slate-100 text-sm">
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Date *</label>
+                                    <input type="date" id="incExpDate" required 
+                                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 focus:outline-none focus:border-cyan-500 text-slate-200 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Payment Method</label>
+                                    <select id="incExpMethod" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 focus:outline-none focus:border-cyan-500 text-slate-200 text-sm">
+                                        <option value="Cash">Cash</option>
+                                        <option value="Debit / Credit Card">Debit / Credit Card</option>
+                                        <option value="Bank Transfer">Bank Transfer</option>
+                                        <option value="Mobile Wallet">Mobile Wallet / Online</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button type="submit" 
+                                class="w-full bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-slate-950 font-bold py-3 px-4 rounded-xl shadow-lg shadow-cyan-500/10 transition duration-200 flex items-center justify-center space-x-2 text-sm">
+                                <i class="fa-solid fa-plus-circle text-sm"></i>
+                                <span>Save Transaction</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Category Breakdown Doughnut Chart -->
+                    <div class="glass-panel rounded-2xl p-5 shadow-xl">
+                        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center">
+                            <i class="fa-solid fa-chart-pie text-cyan-400 mr-2 text-sm"></i>
+                            Expense Category Breakdown
+                        </h3>
+                        <div class="relative w-full h-56 flex items-center justify-center">
+                            <canvas id="categoryChart"></canvas>
+                            <div id="noChartData" class="hidden absolute inset-0 flex flex-col items-center justify-center text-slate-500">
+                                <i class="fa-solid fa-chart-line text-3xl mb-2 text-slate-700"></i>
+                                <p class="text-xs font-medium">No expense records found</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Transaction History List -->
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="glass-panel rounded-2xl p-5 shadow-xl space-y-4">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <h2 class="text-sm font-bold text-white flex items-center uppercase tracking-wide">
+                                <i class="fa-solid fa-clock-rotate-left text-teal-400 mr-2"></i>
+                                History (<span id="incExpFilteredCount">0</span>)
+                            </h2>
+                            <div class="flex items-center space-x-2 w-full sm:w-auto">
+                                <div class="relative w-full sm:w-52">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-500"></i>
+                                    <input type="text" id="searchIncExp" oninput="renderIncExpList()" placeholder="Search title..." 
+                                        class="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700/80 focus:outline-none focus:border-cyan-500 text-xs text-slate-200 placeholder-slate-500">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filter Toggle Controls -->
+                        <div class="bg-slate-900/80 p-1.5 rounded-xl border border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                            <span class="font-medium text-[11px] px-2">Filter By:</span>
+                            <div class="space-x-1">
+                                <button onclick="setIncExpFilter('all')" id="btnFilterAll" class="px-3 py-1 rounded-lg bg-slate-800 text-white font-bold border border-slate-700">All</button>
+                                <button onclick="setIncExpFilter('income')" id="btnFilterIncome" class="px-3 py-1 rounded-lg hover:bg-slate-800 text-emerald-400">Income Only</button>
+                                <button onclick="setIncExpFilter('expense')" id="btnFilterExpense" class="px-3 py-1 rounded-lg hover:bg-slate-800 text-rose-400">Expense Only</button>
+                            </div>
+                        </div>
+
+                        <!-- Transaction List Container -->
+                        <div class="custom-scrollbar max-h-[550px] overflow-y-auto">
+                            <ul id="incExpList" class="divide-y divide-slate-800/60">
+                                <!-- Dynamic JS Items -->
+                            </ul>
+                            <div id="incExpEmptyState" class="hidden py-14 text-center text-slate-500">
+                                <i class="fa-regular fa-folder-open text-4xl mb-3 text-slate-700"></i>
+                                <p class="text-xs">No income or expense entries found.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TAB 2: PAYABLES MANAGEMENT (DEBTS I OWE) -->
+        <div id="tabPayables" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Left: Add Debt Form -->
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="glass-panel rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
+                        <div class="flex items-center space-x-3 pb-2 border-b border-slate-800">
+                            <div class="p-2.5 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
+                                <i class="fa-solid fa-handshake-angle text-lg"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-sm font-bold text-white uppercase tracking-wide">Add Payable (Debt)</h2>
+                                <p class="text-xs text-slate-400">Money you borrowed or owe to someone</p>
+                            </div>
+                        </div>
+
+                        <form onsubmit="handleAddPayable(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Creditor Name / Person *</label>
+                                <input type="text" id="payablePerson" required placeholder="e.g., Uncle John, Shopkeeper, Alex" 
+                                    class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 focus:outline-none focus:border-amber-500 text-slate-100 text-sm">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Debt Amount *</label>
+                                <div class="relative">
+                                    <span class="formCurrencySymbol absolute left-3.5 top-2.5 text-slate-400 font-bold text-sm">$</span>
+                                    <input type="number" step="any" min="0.01" id="payableAmount" required placeholder="0.00" 
+                                        class="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 focus:outline-none focus:border-amber-500 text-slate-100 font-mono text-sm">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Borrowed Date *</label>
+                                    <input type="date" id="payableDate" required 
+                                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 focus:outline-none focus:border-amber-500 text-slate-200 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Notes / Description</label>
+                                    <input type="text" id="payableNote" placeholder="e.g., Emergency loan" 
+                                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 focus:outline-none focus:border-amber-500 text-slate-100 text-sm">
+                                </div>
+                            </div>
+
+                            <button type="submit" 
+                                class="w-full bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl shadow-lg shadow-amber-500/10 transition duration-200 flex items-center justify-center space-x-2 text-sm">
+                                <i class="fa-solid fa-plus-circle text-sm"></i>
+                                <span>Save Payable Record</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Helpful tip badge -->
+                    <div class="bg-amber-950/40 border border-amber-800/40 rounded-2xl p-4 text-xs text-amber-300 space-y-2">
+                        <p class="font-bold flex items-center gap-2"><i class="fa-solid fa-lightbulb text-amber-400 text-sm"></i> How settlement works:</p>
+                        <p class="text-slate-300 leading-relaxed">Clicking the <strong class="text-amber-300">"Settle & Deduct (-$)"</strong> button will automatically deduct the amount from your <strong>Net Available Balance</strong> and mark the debt as settled!</p>
+                    </div>
+                </div>
+
+                <!-- Right: Debt List & Settlement Action -->
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="glass-panel rounded-2xl p-5 shadow-xl space-y-4">
+                        <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+                            <h2 class="text-sm font-bold text-white flex items-center uppercase tracking-wide">
+                                <i class="fa-solid fa-list-check text-amber-400 mr-2"></i>
+                                Liabilities List (Outstanding Debts)
+                            </h2>
+                            <span class="text-xs bg-amber-950 text-amber-400 border border-amber-800/80 font-bold px-3 py-1 rounded-lg" id="payablesCountBadge">0 Debts</span>
+                        </div>
+
+                        <div class="custom-scrollbar max-h-[550px] overflow-y-auto">
+                            <ul id="payablesList" class="divide-y divide-slate-800/60">
+                                <!-- JS Populated -->
+                            </ul>
+                            <div id="payablesEmptyState" class="hidden py-14 text-center text-slate-500">
+                                <i class="fa-solid fa-shield-check text-4xl text-emerald-500/40 mb-3"></i>
+                                <p class="text-xs font-semibold text-slate-400">Awesome! You have no outstanding debts.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TAB 3: RECEIVABLES MANAGEMENT (MONEY OWED TO ME) -->
+        <div id="tabReceivables" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- Left: Add Receivable Form -->
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="glass-panel rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
+                        <div class="flex items-center space-x-3 pb-2 border-b border-slate-800">
+                            <div class="p-2.5 bg-cyan-500/10 text-cyan-400 rounded-xl border border-cyan-500/20">
+                                <i class="fa-solid fa-hand-holding-dollar text-lg"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-sm font-bold text-white uppercase tracking-wide">Add Receivable (Claim)</h2>
+                                <p class="text-xs text-slate-400">Money you lent or someone owes you</p>
+                            </div>
+                        </div>
+
+                        <form onsubmit="handleAddReceivable(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Debtor Name / Debtor *</label>
+                                <input type="text" id="receivablePerson" required placeholder="e.g., Friend Sam, Client David" 
+                                    class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 focus:outline-none focus:border-cyan-500 text-slate-100 text-sm">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Receivable Amount *</label>
+                                <div class="relative">
+                                    <span class="formCurrencySymbol absolute left-3.5 top-2.5 text-slate-400 font-bold text-sm">$</span>
+                                    <input type="number" step="any" min="0.01" id="receivableAmount" required placeholder="0.00" 
+                                        class="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 focus:outline-none focus:border-cyan-500 text-slate-100 font-mono text-sm">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Lent Date *</label>
+                                    <input type="date" id="receivableDate" required 
+                                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 focus:outline-none focus:border-cyan-500 text-slate-200 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Notes / Description</label>
+                                    <input type="text" id="receivableNote" placeholder="e.g., Personal loan" 
+                                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 focus:outline-none focus:border-cyan-500 text-slate-100 text-sm">
+                                </div>
+                            </div>
+
+                            <button type="submit" 
+                                class="w-full bg-gradient-to-r from-cyan-600 to-teal-500 hover:from-cyan-500 hover:to-teal-400 text-slate-950 font-bold py-3 px-4 rounded-xl shadow-lg shadow-cyan-500/10 transition duration-200 flex items-center justify-center space-x-2 text-sm">
+                                <i class="fa-solid fa-plus-circle text-sm"></i>
+                                <span>Save Receivable Record</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Helpful tip badge -->
+                    <div class="bg-cyan-950/40 border border-cyan-800/40 rounded-2xl p-4 text-xs text-cyan-300 space-y-2">
+                        <p class="font-bold flex items-center gap-2"><i class="fa-solid fa-lightbulb text-cyan-400 text-sm"></i> How collection works:</p>
+                        <p class="text-slate-300 leading-relaxed">When you receive the money, click <strong class="text-cyan-300">"Collect & Add (+$)"</strong> to automatically credit the amount into your <strong>Net Available Balance</strong>!</p>
+                    </div>
+                </div>
+
+                <!-- Right: Receivable List & Collection Action -->
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="glass-panel rounded-2xl p-5 shadow-xl space-y-4">
+                        <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+                            <h2 class="text-sm font-bold text-white flex items-center uppercase tracking-wide">
+                                <i class="fa-solid fa-coins text-cyan-400 mr-2"></i>
+                                Claims List (Pending Collections)
+                            </h2>
+                            <span class="text-xs bg-cyan-950 text-cyan-400 border border-cyan-800/80 font-bold px-3 py-1 rounded-lg" id="receivablesCountBadge">0 Claims</span>
+                        </div>
+
+                        <div class="custom-scrollbar max-h-[550px] overflow-y-auto">
+                            <ul id="receivablesList" class="divide-y divide-slate-800/60">
+                                <!-- JS Populated -->
+                            </ul>
+                            <div id="receivablesEmptyState" class="hidden py-14 text-center text-slate-500">
+                                <i class="fa-solid fa-hand-holding-circle-dollar text-4xl text-cyan-500/40 mb-3"></i>
+                                <p class="text-xs font-semibold text-slate-400">You have no pending claims to collect.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Custom Modal for Confirmation (replaces browser confirm) -->
+    <div id="confirmModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-slate-900 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-5 border border-slate-800 transform transition-all text-center">
+            <div id="modalIcon" class="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-circle-question"></i>
+            </div>
+            <div>
+                <h3 id="modalTitle" class="text-base font-bold text-white">Confirm Settlement</h3>
+                <p id="modalMessage" class="text-xs text-slate-400 mt-2 leading-relaxed">Are you sure you want to execute this balance transaction?</p>
+            </div>
+            <div class="flex space-x-3 pt-2">
+                <button onclick="closeConfirmModal()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold border border-slate-700 transition">Cancel</button>
+                <button id="modalConfirmBtn" class="flex-1 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl text-xs font-bold shadow-lg shadow-cyan-500/20 transition">Confirm Action</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900/60 border-t border-slate-800 text-slate-500 py-4 text-center text-xs mt-auto">
+        <p>© 2026 Finance Tracker Pro • All financial data is encrypted & stored locally in your browser.</p>
+    </footer>
+
+    <script>
+        // Category Definitions (English)
+        const CATEGORIES = {
+            expense: [
+                { id: 'food', label: 'Food & Dining', icon: 'fa-utensils', color: 'bg-orange-500/20 text-orange-400 border border-orange-500/30' },
+                { id: 'rent', label: 'Rent & Utilities', icon: 'fa-house-user', color: 'bg-blue-500/20 text-blue-400 border border-blue-500/30' },
+                { id: 'transport', label: 'Transport & Fuel', icon: 'fa-car-side', color: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' },
+                { id: 'shopping', label: 'Shopping & Apparel', icon: 'fa-bag-shopping', color: 'bg-pink-500/20 text-pink-400 border border-pink-500/30' },
+                { id: 'health', label: 'Healthcare & Medical', icon: 'fa-user-doctor', color: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' },
+                { id: 'entertainment', label: 'Entertainment & Travel', icon: 'fa-gamepad', color: 'bg-purple-500/20 text-purple-400 border border-purple-500/30' },
+                { id: 'education', label: 'Education & Books', icon: 'fa-graduation-cap', color: 'bg-teal-500/20 text-teal-400 border border-teal-500/30' },
+                { id: 'other_exp', label: 'Other Expense', icon: 'fa-receipt', color: 'bg-slate-500/20 text-slate-400 border border-slate-500/30' }
+            ],
+            income: [
+                { id: 'salary', label: 'Salary & Wages', icon: 'fa-money-bill-wave', color: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' },
+                { id: 'freelance', label: 'Freelance & Projects', icon: 'fa-laptop-code', color: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' },
+                { id: 'business', label: 'Business Profit', icon: 'fa-store', color: 'bg-blue-500/20 text-blue-400 border border-blue-500/30' },
+                { id: 'gift', label: 'Gift & Bonus', icon: 'fa-gift', color: 'bg-amber-500/20 text-amber-400 border border-amber-500/30' },
+                { id: 'investment', label: 'Investments & Returns', icon: 'fa-chart-line', color: 'bg-violet-500/20 text-violet-400 border border-violet-500/30' },
+                { id: 'other_inc', label: 'Other Income', icon: 'fa-coins', color: 'bg-slate-500/20 text-slate-400 border border-slate-500/30' }
+            ]
+        };
+
+        // Application State Dictionaries
+        let transactions = [];
+        let payables = [];     // Debts (I owe others)
+        let receivables = [];  // Claims (Others owe me)
+        
+        let currentCurrency = '$';
+        let incExpFilterType = 'all';
+        let categoryChartInstance = null;
+        let pendingConfirmAction = null;
+
+        function getTodayDate() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        // On Application Window Load
+        window.onload = function() {
+            document.getElementById('incExpDate').value = getTodayDate();
+            document.getElementById('payableDate').value = getTodayDate();
+            document.getElementById('receivableDate').value = getTodayDate();
+
+            loadData();
+            updateIncExpCategoryDropdown('expense');
+            renderApp();
+        };
+
+        function loadData() {
+            try {
+                const storedTrans = localStorage.getItem('mt_transactions');
+                const storedPayables = localStorage.getItem('mt_payables');
+                const storedReceivables = localStorage.getItem('mt_receivables');
+                const storedCurrency = localStorage.getItem('mt_currency');
+
+                if (storedTrans) {
+                    transactions = JSON.parse(storedTrans);
+                } else {
+                    // Seed initial demo data in English
+                    transactions = [
+                        { id: 't1', title: 'Monthly Salary', amount: 4500, type: 'income', category: 'salary', date: getTodayDate(), method: 'Bank Transfer' },
+                        { id: 't2', title: 'Grocery Supermarket', amount: 320, type: 'expense', category: 'food', date: getTodayDate(), method: 'Debit / Credit Card' }
+                    ];
+                }
+
+                if (storedPayables) {
+                    payables = JSON.parse(storedPayables);
+                } else {
+                    payables = [
+                        { id: 'p1', person: 'Robert (Vendor)', amount: 150, date: getTodayDate(), note: 'Office supplies credit', isSettled: false }
+                    ];
+                }
+
+                if (storedReceivables) {
+                    receivables = JSON.parse(storedReceivables);
+                } else {
+                    receivables = [
+                        { id: 'r1', person: 'Alex (Colleague)', amount: 200, date: getTodayDate(), note: 'Personal loan for travel', isSettled: false }
+                    ];
+                }
+
+                if (storedCurrency) {
+                    currentCurrency = storedCurrency;
+                    document.getElementById('currencySelect').value = currentCurrency;
+                    updateFormCurrencySymbols();
+                }
+            } catch (e) {
+                console.error("Error loading LocalStorage data", e);
+            }
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem('mt_transactions', JSON.stringify(transactions));
+                localStorage.setItem('mt_payables', JSON.stringify(payables));
+                localStorage.setItem('mt_receivables', JSON.stringify(receivables));
+                localStorage.setItem('mt_currency', currentCurrency);
+            } catch (e) {
+                console.error("Error saving LocalStorage data", e);
+            }
+        }
+
+        // Currency Switcher Handler
+        function changeCurrency(newCurrency) {
+            currentCurrency = newCurrency;
+            updateFormCurrencySymbols();
+            saveData();
+            renderApp();
+            showToast(`Currency changed to ${newCurrency}`);
+        }
+
+        function updateFormCurrencySymbols() {
+            document.querySelectorAll('.formCurrencySymbol').forEach(el => {
+                el.innerText = currentCurrency;
+            });
+        }
+
+        function switchTab(tabId) {
+            const tabs = ['tabIncExp', 'tabPayables', 'tabReceivables'];
+            tabs.forEach(t => {
+                document.getElementById(t).classList.add('hidden');
+            });
+
+            document.getElementById(tabId).classList.remove('hidden');
+
+            const navBtnClassInactive = "flex-1 min-w-[160px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition-all text-slate-400 hover:text-white hover:bg-slate-800/50";
+            const navBtnClassActive = "flex-1 min-w-[160px] py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition-all bg-slate-800 text-white border border-slate-700 shadow-md";
+
+            document.getElementById('navTabIncExp').className = navBtnClassInactive;
+            document.getElementById('navTabPayables').className = navBtnClassInactive;
+            document.getElementById('navTabReceivables').className = navBtnClassInactive;
+
+            if (tabId === 'tabIncExp') document.getElementById('navTabIncExp').className = navBtnClassActive;
+            if (tabId === 'tabPayables') document.getElementById('navTabPayables').className = navBtnClassActive;
+            if (tabId === 'tabReceivables') document.getElementById('navTabReceivables').className = navBtnClassActive;
+        }
+
+        function setIncExpFormType(type) {
+            document.getElementById('incExpType').value = type;
+            const expBtn = document.getElementById('formTypeExpenseBtn');
+            const incBtn = document.getElementById('formTypeIncomeBtn');
+
+            if (type === 'expense') {
+                expBtn.className = "py-2.5 rounded-lg transition-all shadow-sm bg-rose-500/20 text-rose-400 border border-rose-500/30 text-center font-bold";
+                incBtn.className = "py-2.5 rounded-lg transition-all text-slate-400 hover:text-white text-center";
+            } else {
+                incBtn.className = "py-2.5 rounded-lg transition-all shadow-sm bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-center font-bold";
+                expBtn.className = "py-2.5 rounded-lg transition-all text-slate-400 hover:text-white text-center";
+            }
+            updateIncExpCategoryDropdown(type);
+        }
+
+        function updateIncExpCategoryDropdown(type) {
+            const select = document.getElementById('incExpCategory');
+            select.innerHTML = '';
+            (CATEGORIES[type] || []).forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat.id;
+                opt.innerText = cat.label;
+                opt.className = "bg-slate-900 text-white";
+                select.appendChild(opt);
+            });
+        }
+
+        function handleAddIncExp(e) {
+            e.preventDefault();
+            const title = document.getElementById('incExpTitle').value.trim();
+            const amount = parseFloat(document.getElementById('incExpAmount').value);
+            const type = document.getElementById('incExpType').value;
+            const category = document.getElementById('incExpCategory').value;
+            const date = document.getElementById('incExpDate').value;
+            const method = document.getElementById('incExpMethod').value;
+
+            if (!title || isNaN(amount) || amount <= 0) return;
+
+            transactions.unshift({
+                id: Date.now().toString(),
+                title,
+                amount,
+                type,
+                category,
+                date,
+                method
+            });
+
+            saveData();
+            renderApp();
+
+            document.getElementById('incExpTitle').value = '';
+            document.getElementById('incExpAmount').value = '';
+            showToast(type === 'income' ? 'Income added successfully!' : 'Expense recorded successfully!');
+        }
+
+        function deleteTransaction(id) {
+            transactions = transactions.filter(t => t.id !== id);
+            saveData();
+            renderApp();
+            showToast('Transaction deleted', 'info');
+        }
+
+        function handleAddPayable(e) {
+            e.preventDefault();
+            const person = document.getElementById('payablePerson').value.trim();
+            const amount = parseFloat(document.getElementById('payableAmount').value);
+            const date = document.getElementById('payableDate').value;
+            const note = document.getElementById('payableNote').value.trim();
+
+            if (!person || isNaN(amount) || amount <= 0) return;
+
+            payables.unshift({
+                id: 'p_' + Date.now(),
+                person,
+                amount,
+                date,
+                note,
+                isSettled: false
+            });
+
+            saveData();
+            renderApp();
+
+            document.getElementById('payablePerson').value = '';
+            document.getElementById('payableAmount').value = '';
+            document.getElementById('payableNote').value = '';
+
+            showToast('Payable debt entry saved!');
+        }
+
+        // SETTLE PAYABLE -> DEDUCT FROM MAIN BALANCE
+        function settlePayable(id) {
+            const item = payables.find(p => p.id === id);
+            if (!item || item.isSettled) return;
+
+            openConfirmModal(
+                'Settle Debt Confirmation',
+                `Are you sure you want to pay ${currentCurrency} ${item.amount.toLocaleString()} to ${item.person}? This amount will be deducted from your Net Balance.`,
+                'Settle & Deduct (-$)',
+                'bg-rose-600 hover:bg-rose-500 text-slate-950 font-bold',
+                function() {
+                    item.isSettled = true;
+                    item.settledDate = getTodayDate();
+
+                    // Deduct from total balance by logging a repayment expense
+                    transactions.unshift({
+                        id: 'settle_p_' + Date.now(),
+                        title: `Debt Repayment (${item.person})`,
+                        amount: item.amount,
+                        type: 'expense',
+                        category: 'other_exp',
+                        date: getTodayDate(),
+                        method: 'Cash'
+                    });
+
+                    saveData();
+                    renderApp();
+                    showToast(`${currentCurrency} ${item.amount.toLocaleString()} paid and deducted from Net Balance!`, 'success');
+                }
+            );
+        }
+
+        function deletePayable(id) {
+            payables = payables.filter(p => p.id !== id);
+            saveData();
+            renderApp();
+            showToast('Payable entry deleted', 'info');
+        }
+
+        function handleAddReceivable(e) {
+            e.preventDefault();
+            const person = document.getElementById('receivablePerson').value.trim();
+            const amount = parseFloat(document.getElementById('receivableAmount').value);
+            const date = document.getElementById('receivableDate').value;
+            const note = document.getElementById('receivableNote').value.trim();
+
+            if (!person || isNaN(amount) || amount <= 0) return;
+
+            receivables.unshift({
+                id: 'r_' + Date.now(),
+                person,
+                amount,
+                date,
+                note,
+                isSettled: false
+            });
+
+            saveData();
+            renderApp();
+
+            document.getElementById('receivablePerson').value = '';
+            document.getElementById('receivableAmount').value = '';
+            document.getElementById('receivableNote').value = '';
+
+            showToast('Receivable claim entry saved!');
+        }
+
+        // SETTLE RECEIVABLE -> ADD TO MAIN BALANCE
+        function settleReceivable(id) {
+            const item = receivables.find(r => r.id === id);
+            if (!item || item.isSettled) return;
+
+            openConfirmModal(
+                'Collect Claim Confirmation',
+                `Did you receive ${currentCurrency} ${item.amount.toLocaleString()} from ${item.person}? This amount will be added directly to your Net Balance.`,
+                'Collect & Credit (+$)',
+                'bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold',
+                function() {
+                    item.isSettled = true;
+                    item.settledDate = getTodayDate();
+
+                    // Credit to total balance by logging an income entry
+                    transactions.unshift({
+                        id: 'settle_r_' + Date.now(),
+                        title: `Claim Collected (${item.person})`,
+                        amount: item.amount,
+                        type: 'income',
+                        category: 'other_inc',
+                        date: getTodayDate(),
+                        method: 'Cash'
+                    });
+
+                    saveData();
+                    renderApp();
+                    showToast(`${currentCurrency} ${item.amount.toLocaleString()} collected and credited to Net Balance!`, 'success');
+                }
+            );
+        }
+
+        function deleteReceivable(id) {
+            receivables = receivables.filter(r => r.id !== id);
+            saveData();
+            renderApp();
+            showToast('Receivable entry deleted', 'info');
+        }
+
+        function renderApp() {
+            renderSummaryCards();
+            renderIncExpList();
+            renderPayablesList();
+            renderReceivablesList();
+            renderChart();
+        }
+
+        function renderSummaryCards() {
+            const totalInc = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+            const totalExp = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+            
+            const totalUnsettledPayable = payables.filter(p => !p.isSettled).reduce((sum, p) => sum + p.amount, 0);
+            const totalUnsettledReceivable = receivables.filter(r => !r.isSettled).reduce((sum, r) => sum + r.amount, 0);
+
+            const balance = totalInc - totalExp;
+
+            document.getElementById('totalBalance').innerText = `${currentCurrency}${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+            document.getElementById('totalIncome').innerText = `${currentCurrency}${totalInc.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+            document.getElementById('totalExpenses').innerText = `${currentCurrency}${totalExp.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+            document.getElementById('totalPayable').innerText = `${currentCurrency}${totalUnsettledPayable.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+            document.getElementById('totalReceivable').innerText = `${currentCurrency}${totalUnsettledReceivable.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+
+            document.getElementById('incomeCount').innerText = `${transactions.filter(t => t.type === 'income').length} Incomes`;
+            document.getElementById('expenseCount').innerText = `${transactions.filter(t => t.type === 'expense').length} Expenses`;
+            
+            const unsettledPayableCount = payables.filter(p => !p.isSettled).length;
+            const unsettledReceivableCount = receivables.filter(r => !r.isSettled).length;
+
+            document.getElementById('payableCount').innerText = `${unsettledPayableCount} Outstanding`;
+            document.getElementById('receivableCount').innerText = `${unsettledReceivableCount} Pending`;
+
+            document.getElementById('badgePayablesCount').innerText = unsettledPayableCount;
+            document.getElementById('badgeReceivablesCount').innerText = unsettledReceivableCount;
+
+            const balElement = document.getElementById('totalBalance');
+            const statusElement = document.getElementById('balanceStatus');
+
+            if (balance < 0) {
+                balElement.className = "text-2xl font-bold mt-1 text-rose-400 font-mono tracking-tight";
+                statusElement.className = "font-medium text-rose-400 flex items-center gap-1";
+                statusElement.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Warning: Deficit balance`;
+            } else {
+                balElement.className = "text-2xl font-bold mt-1 text-white font-mono tracking-tight";
+                statusElement.className = "font-medium text-emerald-400 flex items-center gap-1";
+                statusElement.innerHTML = `<i class="fa-solid fa-circle-check"></i> Financial status healthy`;
+            }
+        }
+
+        // Filter Cashflow Transactions
+        function setIncExpFilter(filter) {
+            incExpFilterType = filter;
+            document.getElementById('btnFilterAll').className = filter === 'all' ? "px-3 py-1 rounded-lg bg-slate-800 text-white font-bold border border-slate-700" : "px-3 py-1 rounded-lg hover:bg-slate-800 text-slate-400";
+            document.getElementById('btnFilterIncome').className = filter === 'income' ? "px-3 py-1 rounded-lg bg-slate-800 text-emerald-400 font-bold border border-slate-700" : "px-3 py-1 rounded-lg hover:bg-slate-800 text-emerald-400";
+            document.getElementById('btnFilterExpense').className = filter === 'expense' ? "px-3 py-1 rounded-lg bg-slate-800 text-rose-400 font-bold border border-slate-700" : "px-3 py-1 rounded-lg hover:bg-slate-800 text-rose-400";
+            renderIncExpList();
+        }
+
+        function renderIncExpList() {
+            const search = document.getElementById('searchIncExp').value.toLowerCase();
+            const listEl = document.getElementById('incExpList');
+            const emptyEl = document.getElementById('incExpEmptyState');
+
+            const filtered = transactions.filter(t => {
+                const matchSearch = t.title.toLowerCase().includes(search);
+                const matchType = incExpFilterType === 'all' || t.type === incExpFilterType;
+                return matchSearch && matchType;
+            });
+
+            document.getElementById('incExpFilteredCount').innerText = filtered.length;
+            listEl.innerHTML = '';
+
+            if (filtered.length === 0) {
+                emptyEl.classList.remove('hidden');
+                return;
+            } else {
+                emptyEl.classList.add('hidden');
+            }
+
+            filtered.forEach(item => {
+                const isInc = item.type === 'income';
+                const catMeta = (CATEGORIES[item.type] || []).find(c => c.id === item.category) || { label: item.category, icon: 'fa-tag', color: 'bg-slate-800 text-slate-400 border border-slate-700' };
+                
+                const li = document.createElement('li');
+                li.className = "py-3 px-2 hover:bg-slate-900/60 transition rounded-xl flex items-center justify-between group";
+                li.innerHTML = `
+                    <div class="flex items-center space-x-3.5">
+                        <div class="w-10 h-10 rounded-xl ${catMeta.color} flex items-center justify-center shrink-0 text-sm shadow-sm">
+                            <i class="fa-solid ${catMeta.icon}"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h4 class="text-sm font-semibold text-slate-100">${escapeHtml(item.title)}</h4>
+                                <span class="text-[10px] px-2 py-0.5 rounded font-bold ${isInc ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60' : 'bg-rose-950 text-rose-400 border border-rose-800/60'}">
+                                    ${isInc ? 'Income' : 'Expense'}
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-1">
+                                <i class="fa-regular fa-calendar mr-1"></i>${item.date} • ${catMeta.label} (${escapeHtml(item.method)})
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <span class="text-sm sm:text-base font-bold font-mono ${isInc ? 'text-emerald-400' : 'text-rose-400'}">
+                            ${isInc ? '+' : '-'}${currentCurrency}${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </span>
+                        <button onclick="deleteTransaction('${item.id}')" class="opacity-0 group-hover:opacity-100 p-2 text-slate-500 hover:text-rose-400 transition" title="Delete entry">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                `;
+                listEl.appendChild(li);
+            });
+        }
+
+        // Render Payables List
+        function renderPayablesList() {
+            const listEl = document.getElementById('payablesList');
+            const emptyEl = document.getElementById('payablesEmptyState');
+
+            document.getElementById('payablesCountBadge').innerText = `${payables.length} Debts`;
+            listEl.innerHTML = '';
+
+            if (payables.length === 0) {
+                emptyEl.classList.remove('hidden');
+                return;
+            } else {
+                emptyEl.classList.add('hidden');
+            }
+
+            payables.forEach(item => {
+                const li = document.createElement('li');
+                li.className = `p-4 hover:bg-slate-900/60 transition rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${item.isSettled ? 'opacity-60 bg-slate-900/40' : ''}`;
+                
+                li.innerHTML = `
+                    <div class="flex items-start space-x-3.5">
+                        <div class="w-10 h-10 rounded-xl ${item.isSettled ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'} flex items-center justify-center shrink-0 text-base font-bold mt-0.5">
+                            <i class="fa-solid ${item.isSettled ? 'fa-check' : 'fa-handshake-angle'}"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h4 class="text-sm font-bold text-white">${escapeHtml(item.person)}</h4>
+                                ${item.isSettled 
+                                    ? '<span class="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800/80 font-bold px-2.5 py-0.5 rounded-full">✓ Settled</span>'
+                                    : '<span class="text-[10px] bg-amber-950 text-amber-400 border border-amber-800/80 font-bold px-2.5 py-0.5 rounded-full">Outstanding Debt</span>'}
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1">${escapeHtml(item.note || 'No notes added')}</p>
+                            <p class="text-[11px] text-slate-500 mt-1"><i class="fa-regular fa-calendar mr-1"></i>Date: ${item.date}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between sm:justify-end space-x-4 pt-2 sm:pt-0 border-t sm:border-0 border-slate-800/80">
+                        <div class="text-left sm:text-right">
+                            <span class="text-base font-bold font-mono text-amber-400">${currentCurrency}${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                            <p class="text-[10px] text-slate-500">Owed Debt</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            ${!item.isSettled ? `
+                                <button onclick="settlePayable('${item.id}')" 
+                                    class="bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-slate-950 px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-md transition flex items-center space-x-1.5">
+                                    <i class="fa-solid fa-minus-circle"></i>
+                                    <span>Settle & Deduct (-$)</span>
+                                </button>
+                            ` : `<span class="text-xs text-emerald-400 font-bold px-3 py-1 bg-emerald-950/60 border border-emerald-800/50 rounded-xl">Fully Paid</span>`}
+
+                            <button onclick="deletePayable('${item.id}')" class="p-2 text-slate-500 hover:text-rose-400 transition" title="Delete payable">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                listEl.appendChild(li);
+            });
+        }
+
+        // Render Receivables List
+        function renderReceivablesList() {
+            const listEl = document.getElementById('receivablesList');
+            const emptyEl = document.getElementById('receivablesEmptyState');
+
+            document.getElementById('receivablesCountBadge').innerText = `${receivables.length} Claims`;
+            listEl.innerHTML = '';
+
+            if (receivables.length === 0) {
+                emptyEl.classList.remove('hidden');
+                return;
+            } else {
+                emptyEl.classList.add('hidden');
+            }
+
+            receivables.forEach(item => {
+                const li = document.createElement('li');
+                li.className = `p-4 hover:bg-slate-900/60 transition rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${item.isSettled ? 'opacity-60 bg-slate-900/40' : ''}`;
+
+                li.innerHTML = `
+                    <div class="flex items-start space-x-3.5">
+                        <div class="w-10 h-10 rounded-xl ${item.isSettled ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'} flex items-center justify-center shrink-0 text-base font-bold mt-0.5">
+                            <i class="fa-solid ${item.isSettled ? 'fa-check' : 'fa-hand-holding-dollar'}"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h4 class="text-sm font-bold text-white">${escapeHtml(item.person)}</h4>
+                                ${item.isSettled 
+                                    ? '<span class="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800/80 font-bold px-2.5 py-0.5 rounded-full">✓ Collected</span>'
+                                    : '<span class="text-[10px] bg-cyan-950 text-cyan-400 border border-cyan-800/80 font-bold px-2.5 py-0.5 rounded-full">Pending Claim</span>'}
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1">${escapeHtml(item.note || 'No notes added')}</p>
+                            <p class="text-[11px] text-slate-500 mt-1"><i class="fa-regular fa-calendar mr-1"></i>Date: ${item.date}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between sm:justify-end space-x-4 pt-2 sm:pt-0 border-t sm:border-0 border-slate-800/80">
+                        <div class="text-left sm:text-right">
+                            <span class="text-base font-bold font-mono text-cyan-400">${currentCurrency}${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                            <p class="text-[10px] text-slate-500">Uncollected Claim</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            ${!item.isSettled ? `
+                                <button onclick="settleReceivable('${item.id}')" 
+                                    class="bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-md transition flex items-center space-x-1.5">
+                                    <i class="fa-solid fa-plus-circle"></i>
+                                    <span>Collect & Credit (+$)</span>
+                                </button>
+                            ` : `<span class="text-xs text-emerald-400 font-bold px-3 py-1 bg-emerald-950/60 border border-emerald-800/50 rounded-xl">Collected</span>`}
+
+                            <button onclick="deleteReceivable('${item.id}')" class="p-2 text-slate-500 hover:text-rose-400 transition" title="Delete claim">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                listEl.appendChild(li);
+            });
+        }
+
+        function renderChart() {
+            const expenses = transactions.filter(t => t.type === 'expense');
+            const noData = document.getElementById('noChartData');
+
+            if (expenses.length === 0) {
+                noData.classList.remove('hidden');
+                if (categoryChartInstance) {
+                    categoryChartInstance.destroy();
+                    categoryChartInstance = null;
+                }
+                return;
+            } else {
+                noData.classList.add('hidden');
+            }
+
+            const sums = {};
+            expenses.forEach(t => {
+                sums[t.category] = (sums[t.category] || 0) + t.amount;
+            });
+
+            const labels = [];
+            const dataValues = [];
+
+            Object.keys(sums).forEach(catId => {
+                const meta = (CATEGORIES.expense || []).find(c => c.id === catId) || { label: catId };
+                labels.push(meta.label);
+                dataValues.push(sums[catId]);
+            });
+
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            if (categoryChartInstance) categoryChartInstance.destroy();
+
+            categoryChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: dataValues,
+                        backgroundColor: ['#f97316', '#3b82f6', '#6366f1', '#ec4899', '#10b981', '#a855f7', '#14b8a6', '#64748b'],
+                        borderWidth: 2,
+                        borderColor: '#0f172a'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#94a3b8', font: { family: 'Baloo Da 2', size: 11 } } }
+                    },
+                    cutout: '70%'
+                }
+            });
+        }
+
+        // Export Data to CSV
+        function exportToCSV() {
+            if (transactions.length === 0 && payables.length === 0 && receivables.length === 0) {
+                showToast('No financial data available to export!', 'error');
+                return;
+            }
+
+            let csv = "data:text/csv;charset=utf-8,\uFEFF";
+            csv += "Type,Title/Person,Amount,Date,Method/Status\n";
+
+            transactions.forEach(t => {
+                csv += `"${t.type}","${t.title}",${t.amount},"${t.date}","${t.method}"\n`;
+            });
+            payables.forEach(p => {
+                csv += `"Payable (Debt)","${p.person}",${p.amount},"${p.date}","${p.isSettled ? 'Paid' : 'Outstanding'}"\n`;
+            });
+            receivables.forEach(r => {
+                csv += `"Receivable (Claim)","${r.person}",${r.amount},"${r.date}","${r.isSettled ? 'Collected' : 'Pending'}"\n`;
+            });
+
+            const encoded = encodeURI(csv);
+            const link = document.createElement("a");
+            link.setAttribute("href", encoded);
+            link.setAttribute("download", `Finance_Report_${getTodayDate()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const bg = type === 'error' ? 'bg-rose-950 border-rose-800 text-rose-200' : (type === 'info' ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-emerald-950 border-emerald-800 text-emerald-200');
+            const icon = type === 'error' ? 'fa-circle-exclamation text-rose-400' : (type === 'info' ? 'fa-circle-info text-cyan-400' : 'fa-circle-check text-emerald-400');
+
+            toast.className = `pointer-events-auto flex items-center space-x-2.5 ${bg} border px-4 py-3 rounded-xl shadow-2xl text-xs font-semibold transform transition-all duration-300 translate-y-2 opacity-0`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-base"></i><span>${escapeHtml(msg)}</span>`;
+
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+
+        function escapeHtml(str) {
+            return (str || '').replace(/[&<>"']/g, function(m) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+            });
+        }
+
+        // Custom Confirm Modal Handler
+        function openConfirmModal(title, message, confirmBtnText, confirmBtnClass, actionFn) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalMessage').innerText = message;
+            const confirmBtn = document.getElementById('modalConfirmBtn');
+            confirmBtn.innerText = confirmBtnText;
+            confirmBtn.className = `flex-1 py-2.5 ${confirmBtnClass} rounded-xl text-xs font-bold shadow-lg transition`;
+            pendingConfirmAction = actionFn;
+            document.getElementById('confirmModal').classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            pendingConfirmAction = null;
+        }
+
+        document.getElementById('modalConfirmBtn').addEventListener('click', function() {
+            if (pendingConfirmAction) {
+                pendingConfirmAction();
+            }
+            closeConfirmModal();
+        });
+    </script>
+</body>
+</html>
