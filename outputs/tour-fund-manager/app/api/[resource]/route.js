@@ -20,7 +20,7 @@ export async function GET(req, { params }) {
     if (params.resource === 'settlements') {
       const [members, deposits, expenses, settled] = await Promise.all([Member.find({ is_active: true }), Deposit.find(), Expense.find(), Settlement.find({ is_paid: true })]);
       const plan = settlementPlan(members, deposits, expenses);
-      return NextResponse.json({ items: safe(plan.map((x,i) => ({ ...x, id: `${x.from_member}-${x.to_member}-${i}`, from_name: members.find(m => String(m._id)===x.from_member)?.name, to_name: members.find(m => String(m._id)===x.to_member)?.name, is_paid: settled.some(s => String(s.from_member)===x.from_member && String(s.to_member)===x.to_member) }))) });
+      return NextResponse.json({ items: safe(plan.map((x,i) => ({ ...x, id: `${x.from_member}-${x.to_member}-${i}`, from_name: members.find(m => String(m._id)===x.from_member)?.name, to_name: members.find(m => String(m._id)===x.to_member)?.name, is_paid: settled.some(s => String(s.from_member)===x.from_member && String(s.to_member)===x.to_member && s.amount >= x.amount) }))) });
     }
     if (params.resource === 'members') return NextResponse.json({ items: safe(await Member.find().select('-password_hash').sort({ createdAt: 1 })) });
     if (params.resource === 'deposits') return NextResponse.json({ items: safe(await Deposit.find().populate('member_id', 'name').sort({ date: -1 })) });
@@ -57,3 +57,4 @@ export async function POST(req, { params }) {
     return NextResponse.json({ item: safe(result) }, { status: 201 });
   } catch (e) { return NextResponse.json({ error: e.message }, { status: e.status || 500 }); }
 }
+
